@@ -1,17 +1,19 @@
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI
 from pydantic import BaseModel
-from app.scraper import scrape_multiple
+from app.scraper import scrape_single
+import asyncio
 
-app = FastAPI(title="Local Business Finder API")
+app = FastAPI(title="Local Business Finder API (Instant Mode)")
 
 class ScrapeRequest(BaseModel):
-    urls: list[str]
+    url: str
 
 @app.get("/")
 async def root():
-    return {"status": "running", "message": "Local Business Finder API"}
+    return {"status": "running", "message": "Local Business Finder API (Instant Mode)"}
 
 @app.post("/scrape")
-async def scrape(request: ScrapeRequest, background_tasks: BackgroundTasks):
-    background_tasks.add_task(scrape_multiple, request.urls)
-    return {"status": "accepted", "urls": len(request.urls)}
+async def scrape(request: ScrapeRequest):
+    """Scrape single URL and return results instantly."""
+    result = await scrape_single(request.url)
+    return result
