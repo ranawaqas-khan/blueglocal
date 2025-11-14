@@ -8,13 +8,33 @@ load_dotenv()
 PROXY_USER = os.getenv("WEBSHARE_USER")
 PROXY_PASS = os.getenv("WEBSHARE_PASS")
 
-# Add more proxies later when you share your list
-PROXIES = []
+def load_proxies(file_path="proxies.txt"):
+    """Load proxies from text file (ip:port:user:pass format)"""
+    proxies = []
+    if os.path.exists(file_path):
+        with open(file_path) as f:
+            for line in f:
+                proxy = line.strip()
+                if proxy:
+                    parts = proxy.split(":")
+                    if len(parts) == 4:
+                        ip, port, user, pwd = parts
+                        proxies.append(f"http://{user}:{pwd}@{ip}:{port}")
+                    else:
+                        print(f"[⚠️] Skipping invalid proxy: {proxy}")
+    else:
+        print("[❌] proxies.txt not found.")
+    print(f"[🔁] Loaded {len(proxies)} proxies.")
+    return proxies
 
-async def scrape_single(playwright, url: str, proxy: str):
+PROXIES = load_proxies()
+
+async def scrape_single(playwright, url: str, proxy_url: str):
+    """Scrape a single Google Maps URL with a given proxy"""
+    print(f"[🌐] Using proxy: {proxy_url}")
     browser = await playwright.chromium.launch(
         headless=True,
-        proxy={"server": proxy, "username": PROXY_USER, "password": PROXY_PASS}
+        proxy={"server": proxy_url}
     )
     page = await browser.new_page()
     try:
@@ -32,9 +52,10 @@ async def scrape_single(playwright, url: str, proxy: str):
         await browser.close()
 
 async def scrape_multiple(urls: list[str]):
+    """Run multiple scraping tasks concurrently"""
     async with async_playwright() as p:
         tasks = []
         for url in urls:
-            proxy = random.choice(PROXIES) if PROXIES else None
-            tasks.append(scrape_single(p, url, proxy))
+            proxy_url = random.choice(PROXIES)
+            tasks.append(scrape_single(p, url, proxy_url))
         await asyncio.gather(*tasks)
